@@ -9,19 +9,11 @@ FMC allows users to: - Register profiles based on  Proffesion type. - Upload wor
 To get started with the Fmc, follow these steps:
 
 
-```bash
-git clone https://github.com/DJGuruji/Fmc.git
-```
-## Front end setup
 
-```bash
-cd front
-npm install
-npm run dev
-```
 ## Backend setup
 
 ```bash
+git clone https://github.com/DJGuruji/fmcBackend.git
 cd back
 npm install
 npm run dev
