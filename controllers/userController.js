@@ -1,6 +1,5 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
-
 const nodemailer = require("nodemailer");
 const multer = require("multer");
 const path = require("path");
@@ -8,20 +7,34 @@ const bcrypt = require("bcrypt");
 const dotenv = require("dotenv");
 const axios = require('axios');
 const OpenAI = require('openai');
-
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("cloudinary").v2;
 
 dotenv.config();
 
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "public/uploads");
-  },
-  filename: function (req, file, cb) {
-    cb(null, `${Date.now()}${path.extname(file.originalname)}`);
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'images',
+    resource_type: 'image',
   },
 });
+
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     cb(null, "public/uploads");
+//   },
+//   filename: function (req, file, cb) {
+//     cb(null, `${Date.now()}${path.extname(file.originalname)}`);
+//   },
+// });
 
 
 const upload = multer({
@@ -40,7 +53,10 @@ const upload = multer({
       cb("Error: Images only!");
     }
   },
-}).single("postImage");
+}).fields([
+  { name: "postImage", maxCount: 1 },
+  { name: "photo", maxCount: 1 },
+]);
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
