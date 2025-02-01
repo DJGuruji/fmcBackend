@@ -58,6 +58,7 @@ const upload = multer({
   { name: "photo", maxCount: 1 },
 ]);
 
+
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: "30d",
@@ -88,6 +89,7 @@ const updateUserProfile = async (req, res) => {
      
       if (req.file) {
         user.photo = req.file.path;
+        
       }
 
       user.state = req.body.state ?? user.state;
@@ -122,8 +124,8 @@ const updateUserProfile = async (req, res) => {
 const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id)
-      .populate('followers', 'name') // Optional: to include followers' names
-      .populate('following', 'name'); // Optional: to include following users' names
+      .populate('followers', 'name') 
+      .populate('following', 'name'); 
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -340,28 +342,55 @@ const getFollowing = async (req, res) => {
 
 
 
-const openai = new OpenAI({
-  apiKey: process.env.NVIDIA_API_KEY,  // Ensure the API key is correctly set
-  baseURL: 'https://api.nvcf.nvidia.com/v1',  // Correct API base URL
-});
+// const openai = new OpenAI({
+//   apiKey: process.env.NVIDIA_API_KEY,  // Ensure the API key is correctly set
+//   baseURL: 'https://api.nvcf.nvidia.com/v1',  // Correct API base URL
+// });
+
+// const postOpenai = async (req, res) => {
+//   const { prompt } = req.body;  // Get the prompt from the request body
+
+//   try {
+//     // Send the request to the Nvidia API (you may need to update this depending on your setup)
+//     const completion = await openai.chat.completions.create({
+//       model: "nvidia/gpt-neo", // Ensure you're using the correct model
+//       messages: [{ role: "user", content: prompt }],
+//       temperature: 0.7,
+//       max_tokens: 300,
+//     });
+
+//     // Return the response to the client
+//     res.json({ message: completion.choices[0]?.message?.content });
+//   } catch (err) {
+//     console.error('Error from NVIDIA API:', err);
+//     res.status(500).json({ message: "Failed to generate response." });
+//   }
+// };
+
 
 const postOpenai = async (req, res) => {
-  const { prompt } = req.body;  // Get the prompt from the request body
+  const { prompt } = req.body;
+
+  if (!prompt) {
+    return res.status(400).json({ error: "Prompt is required" });
+  }
 
   try {
-    // Send the request to the Nvidia API (you may need to update this depending on your setup)
-    const completion = await openai.chat.completions.create({
-      model: "nvidia/gpt-neo", // Ensure you're using the correct model
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-      max_tokens: 300,
+    const apiKey = process.env.GOOGLE_API_KEY; // Store API key in .env file
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
+
+    const response = await axios.post(url, {
+      contents: [{ parts: [{ text: prompt }] }],
     });
 
-    // Return the response to the client
-    res.json({ message: completion.choices[0]?.message?.content });
-  } catch (err) {
-    console.error('Error from NVIDIA API:', err);
-    res.status(500).json({ message: "Failed to generate response." });
+    if (response.data && response.data.candidates) {
+      res.json({ message: response.data.candidates[0].content.parts[0].text.trim() });
+    } else {
+      res.status(500).json({ error: "Unexpected response from Google AI" });
+    }
+  } catch (error) {
+    console.error("Error calling Google Gemini API:", error);
+    res.status(500).json({ error: "Failed to fetch response from Google Gemini AI" });
   }
 };
 
