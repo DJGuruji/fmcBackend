@@ -166,6 +166,9 @@ const loginUser = async (req, res) => {
         .status(403)
         .json({ message: "Please verify your email before logging in" });
     }
+    if (user.role === "blacklist") {
+      return res.status(403).json({ message: "Your account has been blacklisted. Contact support." });
+    }
 
     if (await user.matchPassword(password)) {
       res.json({

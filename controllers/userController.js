@@ -76,6 +76,7 @@ const updateUserProfile = async (req, res) => {
 
     try {
       const user = await User.findById(req.params.userId);
+      console.log(req.body)
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -87,10 +88,10 @@ const updateUserProfile = async (req, res) => {
       user.email = req.body.email ?? user.email;
       
      
-      if (req.file) {
-        user.photo = req.file.path;
-        
+      if (req.files && req.files.photo) {
+        user.photo = req.files.photo[0].path;
       }
+      
 
       user.state = req.body.state ?? user.state;
       user.job = req.body.job ?? user.job;
@@ -112,7 +113,7 @@ const updateUserProfile = async (req, res) => {
         office: updatedUser.office,
         officePlace: updatedUser.officePlace,
         role: updatedUser.role,
-        token: generateToken(updatedUser._id), // Ensure this function is secure
+        token: generateToken(updatedUser._id), 
       });
     } catch (error) {
       console.error("Error updating user profile:", error);
@@ -301,73 +302,6 @@ const getFollowing = async (req, res) => {
 };
 
 
-// const postOpenai = async (req, res) => {
-//   const { prompt } = req.body;
-
-//   try {
-//     const response = await axios.post(
-//       'https://api.openai.com/v1/chat/completions',
-//       {
-//         model: "gpt-3.5-turbo", 
-//         messages: [{ role: "user", content: prompt }],
-//         max_tokens: 150,
-//       },
-//       {
-//         headers: {
-//           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-//           'Content-Type': 'application/json',
-//         },
-//       }
-//     );
-
-//     if (response.data && response.data.choices && response.data.choices[0].message) {
-//       res.json({ message: response.data.choices[0].message.content.trim() });
-//     } else {
-//       console.error('Unexpected response structure:', response.data);
-//       res.status(500).json({ error: 'Unexpected response structure from OpenAI API' });
-//     }
-//   } catch (error) {
-//     if (error.response) {
-//       console.error('Error response from OpenAI API:', error.response.data);
-//       res.status(500).json({ error: 'Error from OpenAI API', details: error.response.data });
-//     } else if (error.request) {
-//       console.error('No response received from OpenAI API:', error.request);
-//       res.status(500).json({ error: 'No response from OpenAI API' });
-//     } else {
-//       console.error('Error setting up request to OpenAI API:', error.message);
-//       res.status(500).json({ error: 'Failed to send request to OpenAI API', details: error.message });
-//     }
-//   }
-// };
-
-
-
-// const openai = new OpenAI({
-//   apiKey: process.env.NVIDIA_API_KEY,  // Ensure the API key is correctly set
-//   baseURL: 'https://api.nvcf.nvidia.com/v1',  // Correct API base URL
-// });
-
-// const postOpenai = async (req, res) => {
-//   const { prompt } = req.body;  // Get the prompt from the request body
-
-//   try {
-//     // Send the request to the Nvidia API (you may need to update this depending on your setup)
-//     const completion = await openai.chat.completions.create({
-//       model: "nvidia/gpt-neo", // Ensure you're using the correct model
-//       messages: [{ role: "user", content: prompt }],
-//       temperature: 0.7,
-//       max_tokens: 300,
-//     });
-
-//     // Return the response to the client
-//     res.json({ message: completion.choices[0]?.message?.content });
-//   } catch (err) {
-//     console.error('Error from NVIDIA API:', err);
-//     res.status(500).json({ message: "Failed to generate response." });
-//   }
-// };
-
-
 const postOpenai = async (req, res) => {
   const { prompt } = req.body;
 
@@ -393,6 +327,9 @@ const postOpenai = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch response from Google Gemini AI" });
   }
 };
+
+
+
 
 
 

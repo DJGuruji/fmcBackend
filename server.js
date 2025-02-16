@@ -2,7 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
-
+const adminSetup = require('./adminSetup');
 const path = require("path");
 const cors = require("cors");
 
@@ -59,6 +59,8 @@ app.post('/api/generate-response', async (req, res) => {
     res.status(500).json({ error: 'Failed to generate response' });
   }
 });
+
+adminSetup();
 
 const PORT = process.env.PORT || 5000;
 
