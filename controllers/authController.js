@@ -193,42 +193,30 @@ const loginUser = async (req, res) => {
 const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
-  const user = await User.findOne({ email });
-
-  if (!user) {
-    return res.status(404).json({ message: "User not found" });
-  }
-
-  const resetToken = generateToken(user._id);
-  user.resetPasswordToken = resetToken;
-  user.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
-
-  await user.save();
-
-  // const resetUrl = `API/auth/passwordreset/${resetToken}`;
-  const resetUrl = `api/auth/passwordreset/${resetToken}`;
-
-  const message = `
-    <h1>You have requested a password reset</h1>
-    <p>Please go to this link to reset your password</p>
-    <a href=${resetUrl} clicktracking=off>${resetUrl}</a>
-  `;
-
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      // host: "localhost",
-      // port: 1025,
-      // secure: false,
-    });
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // Token expires in 10 minutes
+
+    await user.save();
+
+    const resetUrl = `${process.env.API_URL}/api/auth/reset-password/${resetToken}`;
+
+    const message = `
+      <h2>Password Reset Request</h2>
+      <p>You requested a password reset. Click the link below to reset your password:</p>
+      <a href="${resetUrl}" target="_blank" style="background: #28a745; padding: 10px 20px; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
+      <p>If you did not request this, please ignore this email.</p>
+    `;
 
     const mailOptions = {
-      from: "nath93266@gmail.com",
+      from: process.env.SMTP_USER,
       to: user.email,
       subject: "Password Reset Request",
       html: message,
@@ -236,44 +224,48 @@ const forgotPassword = async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
-    res.status(200).json({ message: "Email sent" });
+    res.status(200).json({ message: "Password reset email sent" });
   } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+const passwordSendEmail = (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/reset-password.html"));
+}
+
+
+const resetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { newPassword } = req.body;
+
+  try {
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpire: { $gt: Date.now() }, 
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    // const salt = await bcrypt.genSalt(10);
+    // user.password = await bcrypt.hash(newPassword, salt);
+
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
 
     await user.save();
 
-    res.status(500).json({ message: "Email could not be sent" });
-  }
-};
-
-const resetPassword = async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-
-  try {
-    const user = await User.findById(req.params.userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Current password is incorrect" });
-    }
-
-    // const salt = await bcrypt.genSalt(10);
-    // const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-    // user.password = hashedPassword;
-    user.password = newPassword;
-    await user.save();
-
     res.json({ success: true, message: "Password updated successfully" });
   } catch (error) {
-    console.error("Error updating password:", error);
+    console.error("Error resetting password:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 module.exports = {
  registerUser,
@@ -281,4 +273,5 @@ module.exports = {
   loginUser,
   forgotPassword,
   resetPassword,
+  passwordSendEmail,
 };
