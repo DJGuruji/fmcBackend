@@ -194,18 +194,7 @@ const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
   try {
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
     const resetToken = crypto.randomBytes(32).toString("hex");
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // Token expires in 10 minutes
-
-    await user.save();
-
     const resetUrl = `${process.env.API_URL}/api/auth/reset-password/${resetToken}`;
 
     const message = `
@@ -217,7 +206,7 @@ const forgotPassword = async (req, res) => {
 
     const mailOptions = {
       from: process.env.SMTP_USER,
-      to: user.email,
+      to: email,
       subject: "Password Reset Request",
       html: message,
     };
@@ -230,6 +219,7 @@ const forgotPassword = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 
 const passwordSendEmail = (req, res) => {
