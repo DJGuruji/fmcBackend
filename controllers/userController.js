@@ -310,24 +310,26 @@ const postOpenai = async (req, res) => {
   }
 
   try {
-    const apiKey = process.env.GOOGLE_API_KEY; // Store API key in .env file
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
+    const apiKey = process.env.GOOGLE_API_KEY;
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+
 
     const response = await axios.post(url, {
       contents: [{ parts: [{ text: prompt }] }],
     });
 
-    if (response.data && response.data.candidates) {
-      res.json({ message: response.data.candidates[0].content.parts[0].text.trim() });
+    if (response.data && response.data.candidates && response.data.candidates.length > 0) {
+      const generatedText = response.data.candidates[0]?.content?.parts?.[0]?.text?.trim();
+      return res.json({ message: generatedText || "No response generated" });
     } else {
-      res.status(500).json({ error: "Unexpected response from Google AI" });
+      return res.status(500).json({ error: "Unexpected response format from Google Gemini AI" });
     }
   } catch (error) {
-    console.error("Error calling Google Gemini API:", error);
-    res.status(500).json({ error: "Failed to fetch response from Google Gemini AI" });
+    console.error("Error calling Google Gemini API:", error.response?.data || error.message);
+    return res.status(500).json({ error: "Failed to fetch response from Google Gemini AI" });
   }
 };
-
 
 
 
