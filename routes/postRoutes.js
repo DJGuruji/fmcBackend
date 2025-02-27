@@ -19,4 +19,15 @@ router.put('/:id',protect, postController.updatePost);
 // Delete a post
 router.delete('/:id',protect, postController.deletePost);
 
+
+// Like a post
+router.put('/like/:postId',protect,postController.likePost);
+
+// Add a comment
+router.post('/comment/:postId',protect,postController.addComment);
+
+// Get comments for a post
+router.get('/comments/:postId',protect,postController.getComment);
+router.delete("/comment/:commentId", protect, postController.deleteComment);
+
 module.exports = router;

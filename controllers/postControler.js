@@ -5,7 +5,6 @@ const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("cloudinary").v2;
 const path = require("path");
 
-
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -15,8 +14,8 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'posts',
-    resource_type: 'image',
+    folder: "posts",
+    resource_type: "image",
   },
 });
 
@@ -77,16 +76,27 @@ exports.createPost = async (req, res) => {
   });
 };
 
-// Get all posts or post of a particular user
 exports.getPosts = async (req, res) => {
   try {
     const userId = req.query.userId;
+    const limit = parseInt(req.query.limit) || 7;
+    const skip = parseInt(req.query.skip) || 0;
     let posts;
 
     if (userId) {
-      posts = await Post.find({ user: userId }).populate("user");
+      posts = await Post.find({ user: userId })
+        .populate("user")
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .lean();
     } else {
-      posts = await Post.find().populate("user");
+      posts = await Post.find()
+        .populate("user")
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .lean();
     }
 
     res.status(200).json(posts);
@@ -135,3 +145,105 @@ exports.deletePost = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.likePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.postId);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    let liked = false;
+
+    if (post.likes.includes(req.user.id)) {
+      post.likes = post.likes.filter((id) => id.toString() !== req.user.id);
+    } else {
+      post.likes.push(req.user.id);
+      liked = true;
+    }
+
+    post.likesCount = post.likes.length; // ✅ Ensure this updates
+
+    await post.save();
+    res.json({ 
+      likesCount: post.likesCount, 
+      likedBy: post.likes, 
+      liked 
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+
+
+
+
+exports.addComment = async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ message: "Comment cannot be empty" });
+
+    const post = await Post.findById(req.params.postId);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    const newComment = { user: req.user.id, text };
+    post.comments.push(newComment);
+    
+    await post.save();
+    res.json(post.comments);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+exports.getComment = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.postId)
+      .populate("comments.user", "name photo"); // Populate only the user's name
+
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    res.json(post.comments);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+
+exports.deleteComment = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user.id; // Get user ID from token
+    let commentDeleted = false;
+
+    const posts = await Post.find(); // Get all posts
+
+    for (let post of posts) {
+      const commentIndex = post.comments.findIndex((c) => c._id.toString() === commentId);
+      
+      if (commentIndex !== -1) {
+        if (post.comments[commentIndex].user.toString() !== userId) {
+          return res.status(403).json({ message: "Unauthorized to delete this comment" });
+        }
+
+        post.comments.splice(commentIndex, 1);
+        await post.save();
+        commentDeleted = true;
+        break;
+      }
+    }
+
+    if (!commentDeleted) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    res.json({ message: "Comment deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+

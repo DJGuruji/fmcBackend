@@ -69,19 +69,23 @@ exports.createVideoPost = [
 exports.getVideoPosts = async (req, res) => {
   try {
     const userId = req.query.userId;
-    let videoPosts;
+    const limit = parseInt(req.query.limit) || 5;
+    const skip = parseInt(req.query.skip) || 0;
 
-    if (userId) {
-      videoPosts = await VideoPost.find({ user: userId }).populate("user");
-    } else {
-      videoPosts = await VideoPost.find().populate("user");
-    }
+    let query = userId ? { user: userId } : {};
+
+    const videoPosts = await VideoPost.find(query)
+      .populate("user")
+      .sort({ createdAt: -1 }) // Get latest videos first
+      .limit(limit)
+      .skip(skip);
 
     res.status(200).json(videoPosts);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // Get a single video post by ID
 exports.getVideoPostById = async (req, res) => {
