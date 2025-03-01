@@ -221,6 +221,7 @@ const deleteProfilePhoto = async (req, res) => {
 
 const follow = async (req, res) => {
   try {
+    console.log("Authenticated User:", req.user); // Debugging
     const userToFollow = await User.findById(req.params.userId);
     const currentUser = await User.findById(req.user._id);
 

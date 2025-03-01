@@ -129,3 +129,102 @@ exports.deleteVideoPost = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+
+exports.likevideo = async (req, res) => {
+  try {
+    const video = await VideoPost.findById(req.params.videoId);
+    if (!video) return res.status(404).json({ message: "Video not found" });
+
+    let liked = false;
+
+    if (video.likes.includes(req.user.id)) {
+      video.likes = video.likes.filter((id) => id.toString() !== req.user.id);
+    } else {
+      video.likes.push(req.user.id);
+      liked = true;
+    }
+
+    video.likesCount = video.likes.length; 
+
+    await video.save();
+    res.json({ 
+      likesCount: video.likesCount, 
+      likedBy: video.likes, 
+      liked 
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+
+exports.addComment = async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ message: "Comment cannot be empty" });
+
+    const video = await VideoPost.findById(req.params.videoId);
+    if (!video) return res.status(404).json({ message: "video not found" });
+
+    const newComment = { user: req.user.id, text };
+    video.comments.push(newComment);
+    
+    await video.save();
+    res.json(video.comments);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+exports.getComment = async (req, res) => {
+  try {
+    const video = await VideoPost.findById(req.params.videoId)
+      .populate("comments.user", "name photo"); 
+
+    if (!video) return res.status(404).json({ message: "video not found" });
+
+    res.json(video.comments);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+
+exports.deleteComment = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user.id;
+    let commentDeleted = false;
+
+    const videos = await VideoPost.find(); // Get all posts
+
+    for (let video of videos) {
+      const commentIndex = video.comments.findIndex((c) => c._id.toString() === commentId);
+      
+      if (commentIndex !== -1) {
+        if (video.comments[commentIndex].user.toString() !== userId) {
+          return res.status(403).json({ message: "Unauthorized to delete this comment" });
+        }
+
+        video.comments.splice(commentIndex, 1);
+        await video.save();
+        commentDeleted = true;
+        break;
+      }
+    }
+
+    if (!commentDeleted) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    res.json({ message: "Comment deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
