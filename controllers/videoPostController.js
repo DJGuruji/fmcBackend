@@ -164,17 +164,28 @@ exports.likevideo = async (req, res) => {
 exports.addComment = async (req, res) => {
   try {
     const { text } = req.body;
-    if (!text) return res.status(400).json({ message: "Comment cannot be empty" });
+    if (!text) {
+      return res.status(400).json({ message: "Comment cannot be empty" });
+    }
 
     const video = await VideoPost.findById(req.params.videoId);
-    if (!video) return res.status(404).json({ message: "video not found" });
+    if (!video) {
+      return res.status(404).json({ message: "Video not found" });
+    }
 
+    // Add comment
     const newComment = { user: req.user.id, text };
     video.comments.push(newComment);
-    
     await video.save();
-    res.json(video.comments);
+
+    // ** Re-fetch the video with populated comments **
+    const updatedVideo = await VideoPost.findById(req.params.videoId)
+      .populate("comments.user", "name photo");
+
+    // Send back fully populated comments
+    res.json(updatedVideo.comments);
   } catch (error) {
+    console.error("Error adding comment:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
@@ -183,12 +194,13 @@ exports.addComment = async (req, res) => {
 exports.getComment = async (req, res) => {
   try {
     const video = await VideoPost.findById(req.params.videoId)
-      .populate("comments.user", "name photo"); 
+      .populate("comments.user", "name photo");
 
-    if (!video) return res.status(404).json({ message: "video not found" });
+    if (!video) return res.status(404).json({ message: "Video not found" });
 
     res.json(video.comments);
   } catch (error) {
+    console.error("Error fetching comments:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };

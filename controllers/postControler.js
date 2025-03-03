@@ -163,6 +163,8 @@ exports.likePost = async (req, res) => {
     post.likesCount = post.likes.length; // ✅ Ensure this updates
 
     await post.save();
+    post = await Post.findById(req.params.postId).populate("likes", "username profilePic");
+
     res.json({ 
       likesCount: post.likesCount, 
       likedBy: post.likes, 
@@ -191,7 +193,9 @@ exports.addComment = async (req, res) => {
     post.comments.push(newComment);
     
     await post.save();
-    res.json(post.comments);
+    const updatedpost = await Post.findById(req.params.postId)
+      .populate("comments.user", "name photo");
+    res.json(updatedpost.comments);
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
   }
