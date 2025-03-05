@@ -163,8 +163,7 @@ exports.likePost = async (req, res) => {
     post.likesCount = post.likes.length; // ✅ Ensure this updates
 
     await post.save();
-    post = await Post.findById(req.params.postId).populate("likes", "username profilePic");
-
+  
     res.json({ 
       likesCount: post.likesCount, 
       likedBy: post.likes, 
